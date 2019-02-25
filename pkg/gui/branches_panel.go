@@ -22,6 +22,11 @@ func (gui *Gui) getSelectedBranch() *commands.Branch {
 
 // may want to standardise how these select methods work
 func (gui *Gui) handleBranchSelect(g *gocui.Gui, v *gocui.View) error {
+	if gui.popupPanelFocused() {
+		return nil
+	}
+
+	gui.g.SetCurrentView(v.Name())
 	// This really shouldn't happen: there should always be a master branch
 	if len(gui.State.Branches) == 0 {
 		return gui.renderString(g, "main", gui.Tr.SLocalize("NoBranchesThisRepo"))
@@ -77,6 +82,10 @@ func (gui *Gui) refreshBranches(g *gocui.Gui) error {
 }
 
 func (gui *Gui) handleBranchesNextLine(g *gocui.Gui, v *gocui.View) error {
+	if gui.popupPanelFocused() {
+		return nil
+	}
+
 	panelState := gui.State.Panels.Branches
 	gui.changeSelectedLine(&panelState.SelectedLine, len(gui.State.Branches), false)
 
@@ -87,6 +96,10 @@ func (gui *Gui) handleBranchesNextLine(g *gocui.Gui, v *gocui.View) error {
 }
 
 func (gui *Gui) handleBranchesPrevLine(g *gocui.Gui, v *gocui.View) error {
+	if gui.popupPanelFocused() {
+		return nil
+	}
+
 	panelState := gui.State.Panels.Branches
 	gui.changeSelectedLine(&panelState.SelectedLine, len(gui.State.Branches), true)
 

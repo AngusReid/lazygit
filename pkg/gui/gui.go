@@ -23,6 +23,7 @@ import (
 	"github.com/jesseduffield/lazygit/pkg/config"
 	"github.com/jesseduffield/lazygit/pkg/i18n"
 	"github.com/jesseduffield/lazygit/pkg/updates"
+	"github.com/jesseduffield/lazygit/pkg/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -248,6 +249,13 @@ func (gui *Gui) onFocusLost(v *gocui.View) error {
 		if err := gui.renderListPanel(gui.getBranchesView(), gui.State.Branches); err != nil {
 			return err
 		}
+	} else if v.Name() == "main" {
+		// if we have lost focus to a popup panel, that's okay
+		if gui.popupPanelFocused() {
+			return nil
+		}
+
+		gui.changeContext("main", "normal")
 	}
 	gui.Log.Info(v.Name() + " focus lost")
 	return nil
@@ -265,13 +273,14 @@ func (gui *Gui) onFocus(v *gocui.View) error {
 func (gui *Gui) layout(g *gocui.Gui) error {
 	g.Highlight = true
 	width, height := g.Size()
-	version := gui.Config.GetVersion()
+	donate := color.New(color.FgMagenta, color.Underline).Sprint(gui.Tr.SLocalize("Donate"))
+	version := donate + " " + gui.Config.GetVersion()
 	leftSideWidth := width / 3
 	statusFilesBoundary := 2
 	filesBranchesBoundary := 2 * height / 5   // height - 20
 	commitsBranchesBoundary := 3 * height / 5 // height - 10
 	commitsStashBoundary := height - 5        // height - 5
-	optionsVersionBoundary := width - max(len(version), 1)
+	optionsVersionBoundary := width - max(len(utils.Decolorise(version)), 1)
 	minimumHeight := 16
 	minimumWidth := 10
 
@@ -346,20 +355,22 @@ func (gui *Gui) layout(g *gocui.Gui) error {
 		branchesView.FgColor = gocui.ColorWhite
 	}
 
-	if v, err := g.SetView("commits", 0, commitsBranchesBoundary+panelSpacing, leftSideWidth, commitsStashBoundary, gocui.TOP|gocui.BOTTOM); err != nil {
+	commitsView, err := g.SetView("commits", 0, commitsBranchesBoundary+panelSpacing, leftSideWidth, commitsStashBoundary, gocui.TOP|gocui.BOTTOM)
+	if err != nil {
 		if err.Error() != "unknown view" {
 			return err
 		}
-		v.Title = gui.Tr.SLocalize("CommitsTitle")
-		v.FgColor = gocui.ColorWhite
+		commitsView.Title = gui.Tr.SLocalize("CommitsTitle")
+		commitsView.FgColor = gocui.ColorWhite
 	}
 
-	if v, err := g.SetView("stash", 0, commitsStashBoundary+panelSpacing, leftSideWidth, optionsTop, gocui.TOP|gocui.RIGHT); err != nil {
+	stashView, err := g.SetView("stash", 0, commitsStashBoundary+panelSpacing, leftSideWidth, optionsTop, gocui.TOP|gocui.RIGHT)
+	if err != nil {
 		if err.Error() != "unknown view" {
 			return err
 		}
-		v.Title = gui.Tr.SLocalize("StashTitle")
-		v.FgColor = gocui.ColorWhite
+		stashView.Title = gui.Tr.SLocalize("StashTitle")
+		stashView.FgColor = gocui.ColorWhite
 	}
 
 	if v, err := g.SetView("options", appStatusOptionsBoundary-1, optionsTop, optionsVersionBoundary-1, optionsTop+2, 0); err != nil {
@@ -456,6 +467,13 @@ func (gui *Gui) layout(g *gocui.Gui) error {
 	listViews := map[*gocui.View]int{
 		filesView:    gui.State.Panels.Files.SelectedLine,
 		branchesView: gui.State.Panels.Branches.SelectedLine,
+		commitsView:  gui.State.Panels.Commits.SelectedLine,
+		stashView:    gui.State.Panels.Stash.SelectedLine,
+	}
+
+	// menu view might not exist so we check to be safe
+	if menuView, err := gui.g.View("menu"); err == nil {
+		listViews[menuView] = gui.State.Panels.Menu.SelectedLine
 	}
 	for view, selectedLine := range listViews {
 		// check if the selected line is now out of view and if so refocus it
@@ -533,6 +551,8 @@ func (gui *Gui) Run() error {
 		return err
 	}
 	defer g.Close()
+
+	g.Mouse = true
 
 	gui.g = g // TODO: always use gui.g rather than passing g around everywhere
 
@@ -612,4 +632,12 @@ func (gui *Gui) quit(g *gocui.Gui, v *gocui.View) error {
 		}, nil)
 	}
 	return gocui.ErrQuit
+}
+
+func (gui *Gui) handleDonate(g *gocui.Gui, v *gocui.View) error {
+	cx, _ := v.Cursor()
+	if cx > len(gui.Tr.SLocalize("Donate")) {
+		return nil
+	}
+	return gui.OSCommand.OpenLink("https://donorbox.org/lazygit")
 }

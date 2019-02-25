@@ -588,6 +588,9 @@ func addEnglish(i18nObject *i18n.Bundle) error {
 		}, &i18n.Message{
 			ID:    "CannotRebaseOntoFirstCommit",
 			Other: "You cannot interactive rebase onto the first commit",
+		}, &i18n.Message{
+			ID:    "Donate",
+			Other: "Donate",
 		},
 	)
 }

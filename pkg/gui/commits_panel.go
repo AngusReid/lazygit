@@ -24,6 +24,11 @@ func (gui *Gui) getSelectedCommit(g *gocui.Gui) *commands.Commit {
 }
 
 func (gui *Gui) handleCommitSelect(g *gocui.Gui, v *gocui.View) error {
+	if gui.popupPanelFocused() {
+		return nil
+	}
+
+	gui.g.SetCurrentView(v.Name())
 	commit := gui.getSelectedCommit(g)
 	if commit == nil {
 		return gui.renderString(g, "main", gui.Tr.SLocalize("NoCommitsThisBranch"))
@@ -73,6 +78,10 @@ func (gui *Gui) refreshCommits(g *gocui.Gui) error {
 }
 
 func (gui *Gui) handleCommitsNextLine(g *gocui.Gui, v *gocui.View) error {
+	if gui.popupPanelFocused() {
+		return nil
+	}
+
 	panelState := gui.State.Panels.Commits
 	gui.changeSelectedLine(&panelState.SelectedLine, len(gui.State.Commits), false)
 
@@ -83,6 +92,10 @@ func (gui *Gui) handleCommitsNextLine(g *gocui.Gui, v *gocui.View) error {
 }
 
 func (gui *Gui) handleCommitsPrevLine(g *gocui.Gui, v *gocui.View) error {
+	if gui.popupPanelFocused() {
+		return nil
+	}
+
 	panelState := gui.State.Panels.Commits
 	gui.changeSelectedLine(&panelState.SelectedLine, len(gui.State.Commits), true)
 

@@ -383,7 +383,6 @@ func (gui *Gui) GetInitialKeybindings() []*Binding {
 			Handler:     gui.handleStashApply,
 			Description: gui.Tr.SLocalize("apply"),
 		}, {
-
 			ViewName:    "stash",
 			Key:         'g',
 			Modifier:    gocui.ModNone,
@@ -425,6 +424,11 @@ func (gui *Gui) GetInitialKeybindings() []*Binding {
 			Key:      'q',
 			Modifier: gocui.ModNone,
 			Handler:  gui.handleMenuClose,
+		}, {
+			ViewName: "version",
+			Key:      gocui.MouseLeft,
+			Modifier: gocui.ModNone,
+			Handler:  gui.handleDonate,
 		},
 	}
 
@@ -441,20 +445,25 @@ func (gui *Gui) GetInitialKeybindings() []*Binding {
 	listPanelMap := map[string]struct {
 		prevLine func(*gocui.Gui, *gocui.View) error
 		nextLine func(*gocui.Gui, *gocui.View) error
+		focus    func(*gocui.Gui, *gocui.View) error
 	}{
-		"menu":     {prevLine: gui.handleMenuPrevLine, nextLine: gui.handleMenuNextLine},
-		"files":    {prevLine: gui.handleFilesPrevLine, nextLine: gui.handleFilesNextLine},
-		"branches": {prevLine: gui.handleBranchesPrevLine, nextLine: gui.handleBranchesNextLine},
-		"commits":  {prevLine: gui.handleCommitsPrevLine, nextLine: gui.handleCommitsNextLine},
-		"stash":    {prevLine: gui.handleStashPrevLine, nextLine: gui.handleStashNextLine},
+		"menu":     {prevLine: gui.handleMenuPrevLine, nextLine: gui.handleMenuNextLine, focus: gui.handleMenuSelect},
+		"files":    {prevLine: gui.handleFilesPrevLine, nextLine: gui.handleFilesNextLine, focus: gui.handleFilesFocus},
+		"branches": {prevLine: gui.handleBranchesPrevLine, nextLine: gui.handleBranchesNextLine, focus: gui.handleBranchSelect},
+		"commits":  {prevLine: gui.handleCommitsPrevLine, nextLine: gui.handleCommitsNextLine, focus: gui.handleCommitSelect},
+		"stash":    {prevLine: gui.handleStashPrevLine, nextLine: gui.handleStashNextLine, focus: gui.handleStashEntrySelect},
+		"status":   {focus: gui.handleStatusSelect},
 	}
 
 	for viewName, functions := range listPanelMap {
 		bindings = append(bindings, []*Binding{
 			{ViewName: viewName, Key: 'k', Modifier: gocui.ModNone, Handler: functions.prevLine},
 			{ViewName: viewName, Key: gocui.KeyArrowUp, Modifier: gocui.ModNone, Handler: functions.prevLine},
+			{ViewName: viewName, Key: gocui.MouseWheelUp, Modifier: gocui.ModNone, Handler: functions.prevLine},
 			{ViewName: viewName, Key: 'j', Modifier: gocui.ModNone, Handler: functions.nextLine},
 			{ViewName: viewName, Key: gocui.KeyArrowDown, Modifier: gocui.ModNone, Handler: functions.nextLine},
+			{ViewName: viewName, Key: gocui.MouseWheelDown, Modifier: gocui.ModNone, Handler: functions.nextLine},
+			{ViewName: viewName, Key: gocui.MouseLeft, Modifier: gocui.ModNone, Handler: functions.focus},
 		}...)
 	}
 
@@ -463,7 +472,7 @@ func (gui *Gui) GetInitialKeybindings() []*Binding {
 
 func (gui *Gui) GetCurrentKeybindings() []*Binding {
 	bindings := gui.GetInitialKeybindings()
-	viewName := gui.currentViewName(gui.g)
+	viewName := gui.currentViewName()
 	currentContext := gui.State.Contexts[viewName]
 	contextBindings := gui.getContextMap()[viewName][currentContext]
 
@@ -512,6 +521,16 @@ func (gui *Gui) getContextMap() map[string]map[string][]*Binding {
 				}, {
 					ViewName: "main",
 					Key:      'j',
+					Modifier: gocui.ModNone,
+					Handler:  gui.handleStagingNextLine,
+				}, {
+					ViewName: "main",
+					Key:      gocui.MouseWheelUp,
+					Modifier: gocui.ModNone,
+					Handler:  gui.handleStagingPrevLine,
+				}, {
+					ViewName: "main",
+					Key:      gocui.MouseWheelDown,
 					Modifier: gocui.ModNone,
 					Handler:  gui.handleStagingNextLine,
 				}, {
@@ -588,6 +607,16 @@ func (gui *Gui) getContextMap() map[string]map[string][]*Binding {
 					Handler:  gui.handleSelectBottom,
 				}, {
 					ViewName: "main",
+					Key:      gocui.MouseWheelUp,
+					Modifier: gocui.ModNone,
+					Handler:  gui.handleSelectTop,
+				}, {
+					ViewName: "main",
+					Key:      gocui.MouseWheelDown,
+					Modifier: gocui.ModNone,
+					Handler:  gui.handleSelectBottom,
+				}, {
+					ViewName: "main",
 					Key:      'h',
 					Modifier: gocui.ModNone,
 					Handler:  gui.handleSelectPrevConflict,
@@ -612,6 +641,19 @@ func (gui *Gui) getContextMap() map[string]map[string][]*Binding {
 					Modifier:    gocui.ModNone,
 					Handler:     gui.handlePopFileSnapshot,
 					Description: gui.Tr.SLocalize("Undo"),
+				},
+			},
+			"normal": {
+				{
+					ViewName: "main",
+					Key:      gocui.MouseWheelDown,
+					Modifier: gocui.ModNone,
+					Handler:  gui.scrollDownMain,
+				}, {
+					ViewName: "main",
+					Key:      gocui.MouseWheelUp,
+					Modifier: gocui.ModNone,
+					Handler:  gui.scrollUpMain,
 				},
 			},
 		},
